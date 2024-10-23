@@ -137,10 +137,35 @@ namespace VCX::Labs::GeometryProcessing {
 
         // Set boundary UVs for boundary vertices.
         // your code here: directly edit output.TexCoords
-
+        std::vector < int > pot;
+        std::vector < bool > mark(input.Positions.size(), 0);
+        for(auto e : G.Edges()) {
+            if(!e->TwinEdgeOr(nullptr)) {
+                pot.push_back(e->From());
+                pot.push_back(e->To());
+                mark[e->From()] = mark[e->To()] = 1;
+            }
+        }
+        sort(pot.begin(), pot.end(), [&](int x, int y) { 
+            return atan2(input.Positions[x].x, input.Positions[x].y) < 
+                   atan2(input.Positions[y].x, input.Positions[y].y);
+        });
+        for(int i = 0; i < pot.size(); i++) {
+            output.TexCoords[pot[i]] = glm::vec2{ cos(2 * M_PI * i / pot.size()), sin(2 * M_PI * i / pot.size()) };
+        }
         // Solve equation via Gauss-Seidel Iterative Method.
         for (int k = 0; k < numIterations; ++k) {
             // your code here:
+            for(int i = 0; i < input.Positions.size(); i++) if(!mark[i]) {
+                glm::vec2 nx(0, 0);//output.TexCoords[i];
+                auto neigh = G.Vertex(i)->Neighbors();
+                float ct = 1. / neigh.size();
+                for (auto v : neigh) 
+                    nx += output.TexCoords[v];
+                nx *= ct; 
+                // printf("%f %f\n", nx.x, nx.y);
+                output.TexCoords[i] = nx;
+            }
         }
     }
 
