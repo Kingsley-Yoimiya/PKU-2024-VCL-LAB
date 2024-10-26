@@ -356,7 +356,11 @@ namespace VCX::Labs::GeometryProcessing {
         static constexpr auto GetCotangent {
             [] (glm::vec3 vAngle, glm::vec3 v1, glm::vec3 v2) -> float {
                 // your code here:
-                return 0.0f;
+                glm::vec3 a = v1 - vAngle;
+                glm::vec3 b = v2 - vAngle;
+                float l1 = sqrt(glm::dot(a, a)), l2 = sqrt(glm::dot(b, b));
+                float vcos = glm::dot(a, b) / l1, vsin = sqrt(1 - vcos * vcos);
+                return fabs(vcos / vsin);
             }
         };
 
@@ -377,6 +381,24 @@ namespace VCX::Labs::GeometryProcessing {
             Engine::SurfaceMesh curr_mesh = prev_mesh;
             for (std::size_t i = 0; i < input.Positions.size(); ++i) {
                 // your code here: curr_mesh.Positions[i] = ...
+                glm::vec3 newpos(0);
+                float tot = 0;
+                auto edges = G.Vertex(i)->Ring();
+                for(auto e : edges) {
+                    auto t = e->PrevEdge();
+                    int x = t->To(), y = e->To(), z = t->TwinEdge()->NextEdge()->To();
+                    if(useUniformWeight) {
+                        tot += 1;
+                        newpos += input.Positions[x];
+                    }
+                    else {
+                        float ret = GetCotangent(input.Positions[i], input.Positions[x], input.Positions[y]) +
+                            GetCotangent(input.Positions[i], input.Positions[x], input.Positions[z]);
+                        newpos += ret * input.Positions[x];
+                        tot += ret;
+                    }
+                }
+                curr_mesh.Positions[i] = lambda * (newpos / tot) + input.Positions[i] * (1 - lambda);
             }
             // Move curr_mesh to prev_mesh.
             prev_mesh.Swap(curr_mesh);
