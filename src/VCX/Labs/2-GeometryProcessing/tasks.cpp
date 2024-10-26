@@ -191,6 +191,15 @@ namespace VCX::Labs::GeometryProcessing {
             [&G, &output] (DCEL::Triangle const * f) -> glm::mat4 {
                 glm::mat4 Kp;
                 // your code here:
+                glm::vec3 u = output.Positions[f->VertexIndex(0)];
+                glm::vec3 v = output.Positions[f->VertexIndex(1)];
+                glm::vec3 w = output.Positions[f->VertexIndex(2)];
+                glm::vec3 ex = { -1., -1., -1. };
+                glm::vec3 n = glm::inverse(glm::transpose(glm::mat3(u, v, w))) * ex;
+                double scale = sqrt((n.x * n.x + n.y * n.y + n.z * n.z));
+                n /= scale;  // a ^ 2 + b ^ 2 + c ^ 2 + d = 1;
+                glm::vec4 p = { n.x, n.y, n.z, 1. / scale };
+                for(int i = 0; i < 4; i++) for(int j = 0; j < 4; j++) Kp[i][j] = p[i] * p[j];
                 return Kp;
             }
         };
@@ -211,7 +220,13 @@ namespace VCX::Labs::GeometryProcessing {
                 glm::mat4 const & Q
             ) -> ContractionPair {
                 // your code here:
-                return {};
+                glm::mat4 tQ = glm::transpose(Q);
+                tQ[0][3] = tQ[1][3] = tQ[2][3] = 0; tQ[3][3] = 1;
+                glm::vec4 b = { 0, 0, 0, 1 };
+                glm::vec4 v = {(p1 + p2) / 2.f, 1};
+                if(glm::determinant(tQ) >= 0.001) v = glm::inverse(tQ) * b;
+                float cost = glm::dot(v, Q * v);
+                return { edge, v, cost };
             }
         };
 
@@ -298,12 +313,32 @@ namespace VCX::Labs::GeometryProcessing {
                 //        update Q matrix of each vertex on the ring (update $Qv$).
                 //     3. Update Q matrix of vertex v1 as well (update $Qv$).
                 //     4. Update $Kf$.
+                auto f                 = e->Face();
+                auto Q                 = UpdateQ(f);
+                Qv[e->From()] += Q - Kf[G.IndexOf(f)];
+                Qv[e->To()] += Q - Kf[G.IndexOf(f)];
+                Qv[v1] += Q;
+                Kf[G.IndexOf(f)] = Q;
             }
 
             // Finally, as the Q matrix changed, we should update the relative $ContractionPair$ in $pairs$.
             // Any pair with the Q matrix of its endpoints changed, should be remade by $MakePair$.
             // your code here:
-
+            for (auto e1 : ring) {
+                auto vv1 = e1->From();
+                auto tring   = G.Vertex(vv1)->Ring();
+                for (auto e2 : tring){
+                    if (!G.IsContractable(e2->NextEdge())){
+                        pairs[pair_map[G.IndexOf(e2->NextEdge())]].edge=nullptr;
+                    }
+                    else{
+                        auto vv2 = e2->To();
+                        auto tpair = MakePair(e2->NextEdge(), output.Positions[vv1], output.Positions[vv2], Qv[vv1] + Qv[vv2]);
+                        pairs[pair_map[G.IndexOf(e2->NextEdge())]].targetPosition = tpair.targetPosition;
+                        pairs[pair_map[G.IndexOf(e2->NextEdge())]].cost = tpair.cost;
+                    }
+                }
+            }
         }
 
         // In the end, we check if the result mesh is watertight and manifold.
