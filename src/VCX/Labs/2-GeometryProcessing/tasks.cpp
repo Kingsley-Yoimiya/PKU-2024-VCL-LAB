@@ -412,5 +412,56 @@ namespace VCX::Labs::GeometryProcessing {
     /******************* 5. Marching Cubes *****************/
     void MarchingCubes(Engine::SurfaceMesh & output, const std::function<float(const glm::vec3 &)> & sdf, const glm::vec3 & grid_min, const float dx, const int n) {
         // your code here:
+        auto getNodePos = [&](glm::vec3 t, int i) {
+            t.x += (i & 1) * dx;
+            t.y += (i >> 1 & 1) * dx;
+            t.z += (i >> 2 & 1) * dx;
+            return t;
+        };
+        auto unit = [&](int i) {
+            if(i == 0) return glm::vec3(1, 0, 0);
+            if(i == 1) return glm::vec3(0, 1, 0);
+            if(i == 2) return glm::vec3(0, 0, 1);
+            return glm::vec3(0, 0, 0);
+        };
+        auto getEdgePos = [&](glm::vec3 t, int j) {
+            return t + dx * (j & 1) * unit(((j >> 2) + 1) % 3) + dx * ((j >> 1) & 1) * unit(((j >> 2) + 2) % 3);
+        };
+        auto getNormal = [&](glm::vec3 pos) { 
+            float l = 1e-2;
+            float fpos = sdf(pos), fx = sdf(pos + unit(0) * l), fy = sdf(pos + unit(1) * l), fz = sdf(pos + unit(2) * l);
+            fx -= fpos, fy -= fpos, fz -= fpos;
+            fx /= l, fy /= l, fz /= l;
+            return glm::normalize(glm::vec3(fx, fy, fz));
+        };
+        int pos[12];
+        for(int x = 0; x < n; x++)
+            for(int y = 0; y < n; y++)
+                for(int z = 0; z < n; z++) {
+                    int stu = 0;
+                    glm::vec3 v0 = grid_min + glm::vec3(dx * x, dx * y, dx * z);
+                    for(int s = 7; s >= 0; s--) stu = stu << 1 | (sdf(getNodePos(v0, s)) >= 0);
+                    int edgestu = c_EdgeStateTable[stu];
+                    for(int s = 0; s < 12; s++) if(edgestu >> s & 1) {
+                        pos[s] = output.Positions.size();
+                        glm::vec3   stpos = getEdgePos(v0, s),
+                                    edpos = stpos + dx * unit(s >> 2);
+                        float v1 = sdf(edpos), v2 = sdf(stpos);
+                        glm::vec3   edgepos = ((v2) * edpos + (-v1) * stpos) / (v2 - v1);
+                        output.Positions.push_back(edgepos);
+                        glm::vec3   stn = getNormal(stpos), 
+                                    edn = getNormal(edpos), 
+                                    normal = ((v2) * edn + (-v1) * stn) / (v2 - v1) ;
+                        output.Normals.push_back(normal);
+                    }
+                    for(int t = 0; t < 6; t++) if(c_EdgeOrdsTable[stu][t * 3] != -1) {
+                        int a = c_EdgeOrdsTable[stu][t * 3], 
+                            b = c_EdgeOrdsTable[stu][t * 3 + 1],
+                            c = c_EdgeOrdsTable[stu][t * 3 + 2];
+                        output.Indices.push_back(pos[c]);
+                        output.Indices.push_back(pos[b]);
+                        output.Indices.push_back(pos[a]);
+                    }
+                }
     }
 } // namespace VCX::Labs::GeometryProcessing
