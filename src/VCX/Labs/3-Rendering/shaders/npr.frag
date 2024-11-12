@@ -28,8 +28,7 @@ uniform vec3 u_CoolColor;
 uniform vec3 u_WarmColor;
 
 vec3 Shade (vec3 lightDir, vec3 normal) {
-    // your code here:
-    return vec3(0);
+    return (1 + dot(lightDir, normal)) / 2 * u_CoolColor + (1 - dot(lightDir, normal)) / 2 * u_WarmColor;
 }
 
 void main() {
