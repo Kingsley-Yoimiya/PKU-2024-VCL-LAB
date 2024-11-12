@@ -47,7 +47,8 @@ void main() {
     // Environment component
 
     // your code here
-    total += vec3(0) * u_EnvironmentScale;
+    vec3 I = normalize(u_ViewPosition - v_Position), R = reflect(I, normalize(normal));
+    total += texture(u_EnvironmentMap, R).rgb * u_EnvironmentScale;
 
     // Iterate lights.
     for (int i = 0; i < u_CntPointLights; i++) {
