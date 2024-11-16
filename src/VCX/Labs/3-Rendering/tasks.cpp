@@ -24,8 +24,15 @@ namespace VCX::Labs::Rendering {
     /******************* 1. Ray-triangle intersection *****************/
     bool IntersectTriangle(Intersection & output, Ray const & ray, glm::vec3 const & p1, glm::vec3 const & p2, glm::vec3 const & p3) {
         // your code here
-
-        return false;
+        glm::vec3 D = ray.Direction, E1 = p2 - p1, E2 = p3 - p1, T = ray.Origin - p1;
+        glm::vec3 P = glm::cross(D, E2), Q = glm::cross(T, E1);
+        float div = glm::dot(P, E1);
+        if(fabs(div) < 1e-4) return false;
+        output.t = glm::dot(Q, E2)  / div;
+        output.u = glm::dot(P, T)   / div;
+        output.v = glm::dot(Q, D)   / div;
+        if(output.t < 0 || output.u < 0 || output.v < 0 || output.u + output.v > 1) return false;
+        return true;
     }
 
     glm::vec3 RayTrace(const RayIntersector & intersector, Ray ray, int maxDepth, bool enableShadow) {
@@ -55,17 +62,37 @@ namespace VCX::Labs::Rendering {
                     attenuation = 1.0f / glm::dot(l, l);
                     if (enableShadow) {
                         // your code here
+                        auto hit = intersector.IntersectRay(Ray(pos, glm::normalize(l)));
+                        if (hit.IntersectState && hit.IntersectAlbedo.w < 0.2) {
+                            hit = intersector.IntersectRay(Ray(hit.IntersectPosition, glm::normalize(l)));
+                        }
+                        if (hit.IntersectState) {
+                            glm::vec3 p = hit.IntersectPosition - pos;
+                            if(glm::dot(p, p) < glm::dot(l, l)) attenuation = 0;
+                        }
                     }
                 } else if (light.Type == Engine::LightType::Directional) {
                     l           = light.Direction;
                     attenuation = 1.0f;
                     if (enableShadow) {
                         // your code here
+                        auto hit = intersector.IntersectRay(Ray(pos, glm::normalize(l)));
+                        if (hit.IntersectState && hit.IntersectAlbedo.w < 0.2) {
+                            hit = intersector.IntersectRay(Ray(hit.IntersectPosition, glm::normalize(l)));
+                        }
+                        if (hit.IntersectState) {
+                            glm::vec3 p = hit.IntersectPosition - pos;
+                            if(glm::dot(p, p) < glm::dot(l, l)) attenuation = 0;
+                        }
                     }
                 }
 
                 /******************* 2. Whitted-style ray tracing *****************/
                 // your code here
+                glm::vec3 h = glm::normalize(-ray.Direction + glm::normalize(l));
+                result = kd * intersector.InternalScene->AmbientIntensity;
+                result += light.Intensity * attenuation * kd * std::max((float)0, glm::dot(n, glm::normalize(l)));
+                result += light.Intensity * attenuation * ks * std::pow(std::max((float)0, glm::dot(h, n)), shininess);
             }
 
             if (alpha < 0.9) {
