@@ -130,7 +130,7 @@ namespace VCX::Labs::Animation {
 
     float calc_g(MassSpringSystem & system, std::vector<glm::vec3> Positions, float dt) {
         std::vector<glm::vec3> y    = calc_y(system, system.Positions, dt);
-        auto tPos = glm2eigen(Positions) - glm2eigen(y);
+        Eigen::VectorXf tPos = glm2eigen(Positions) - glm2eigen(y);
         float ret = (tPos.transpose() * system.Mass * tPos / (2.f * dt * dt))[0];
         for (auto const spring : system.Springs) {
             auto const p0 = spring.AdjIdx.first;
@@ -142,13 +142,13 @@ namespace VCX::Labs::Animation {
     }
 
     Eigen::VectorXf calc_dg(MassSpringSystem & system, std::vector<glm::vec3> Positions, float dt) {
-        auto y = calc_y(system, system.Positions, dt);
+        std::vector<glm::vec3> y = calc_y(system, system.Positions, dt);
         std::vector<glm::vec3> dg(Positions.size(), glm::vec3(0));
         for (auto const spring : system.Springs) {
             auto const p0 = spring.AdjIdx.first;
             auto const p1 = spring.AdjIdx.second;
             glm::vec3 x0 = Positions[p0], x1 = Positions[p1];
-            auto f = system.Stiffness * (glm::length(x1 - x0) - spring.RestLength) * glm::normalize(x1 - x0);
+            glm::vec3 f = system.Stiffness * (glm::length(x1 - x0) - spring.RestLength) * glm::normalize(x1 - x0);
             dg[p0] -= f;
             dg[p1] += f;
         }
@@ -227,8 +227,8 @@ namespace VCX::Labs::Animation {
         //     ComputeSimplicialLLT(H, -dg)
         // );
         for(int iter = 0; iter < 1000; iter++) {
-            auto dg = calc_dg(system, nowpos, dt);
-            auto PosDelta = eigen2glm(-dg);
+            Eigen::VectorXf dg = calc_dg(system, nowpos, dt);
+            std::vector<glm::vec3> PosDelta = eigen2glm(-dg);
             float beta = 0.98, alpha = 1 / beta, gamma = 0.0001, evalg = 0;
             auto nPositions = nowpos;
             do {
