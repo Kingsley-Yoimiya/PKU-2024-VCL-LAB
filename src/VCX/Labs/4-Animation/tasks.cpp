@@ -104,27 +104,81 @@ namespace VCX::Labs::Animation {
         return solver.solve(b);
     }
 
+    Eigen::VectorXf calc_y(MassSpringSystem &system, Eigen::VectorXf const Positions, float const dt) {
+        return  Positions + dt * glm2eigen(system.Velocities) + 
+                dt * dt / system.Mass * glm2eigen(
+                    std::vector<glm::vec3>(
+                        system.Positions.size(), 
+                        glm::vec3(0, -system.Gravity, 0)
+                    )
+                );
+    }
+
+    glm::vec3 getVec3(Eigen::VectorXf x, int pos) { 
+        return glm::vec3({ x[pos * 3], x[pos * 3 + 1], x[pos * 3 + 2] });
+    }
+
+    float calc_g(MassSpringSystem &system, Eigen::VectorXf const Positions, Eigen::VectorXf const y, float const dt) {
+        Eigen::VectorXf tmp = Positions - y;
+        float ret = tmp.dot(tmp) * system.Mass / (2 * dt * dt);
+        for(const auto spring : system.Springs) {
+            auto const p0 = spring.AdjIdx.first;
+            auto const p1 = spring.AdjIdx.second;
+            glm::vec3 const x01 = getVec3(Positions, p1) - getVec3(Positions, p0);
+            // glm::vec3 const e01 = glm::normalize(x01);
+            ret += 0.5 * system.Stiffness * glm::pow(glm::length(x01) - spring.RestLength, 2);
+        }
+        return ret;
+    }
+    
+    Eigen::VectorXf calc_dg(MassSpringSystem &system, Eigen::VectorXf const Positions, Eigen::VectorXf const y, float const dt) {
+        Eigen::VectorXf ret = (Positions - y) * system.Mass / (dt * dt); //Eigen::VectorXf::Zero(Positions.size());
+        for(const auto spring : system.Springs) {
+            auto const p0 = spring.AdjIdx.first;
+            auto const p1 = spring.AdjIdx.second;
+            glm::vec3 const x01 = getVec3(Positions, p1) - getVec3(Positions, p0);
+            glm::vec3 const e01 = glm::normalize(x01);
+            glm::vec3 f = system.Stiffness * (glm::length(x01) - spring.RestLength) * e01;
+            for(int i = 0; i < 3; i++) {
+                ret[p0 * 3 + i] -= f[i];
+                ret[p1 * 3 + i] += f[i];
+            }
+        }
+        return ret;
+    }
+
+    // Eigen::VectorXf calc_ddg(MassSpringSystem &system, Eigen::VectorXf const Positions, Eigen::VectorXf const y, float const dt) {
+
+    // }
+
     void AdvanceMassSpringSystem(MassSpringSystem & system, float const dt) {
-        // your code here: rewrite following code
-        int const steps = 1000;
-        float const ddt = dt / steps; 
-        for (std::size_t s = 0; s < steps; s++) {
-            std::vector<glm::vec3> forces(system.Positions.size(), glm::vec3(0));
-            for (auto const spring : system.Springs) {
-                auto const p0 = spring.AdjIdx.first;
-                auto const p1 = spring.AdjIdx.second;
-                glm::vec3 const x01 = system.Positions[p1] - system.Positions[p0];
-                glm::vec3 const v01 = system.Velocities[p1] - system.Velocities[p0];
-                glm::vec3 const e01 = glm::normalize(x01);
-                glm::vec3 f = (system.Stiffness * (glm::length(x01) - spring.RestLength) + system.Damping * glm::dot(v01, e01)) * e01;
-                forces[p0] += f;
-                forces[p1] -= f;
-            }
-            for (std::size_t i = 0; i < system.Positions.size(); i++) {
-                if (system.Fixed[i]) continue;
-                system.Velocities[i] += (glm::vec3(0, -system.Gravity, 0) + forces[i] / system.Mass) * ddt;
-                system.Positions[i] += system.Velocities[i] * ddt;
-            }
+        Eigen::VectorXf x_origin = glm2eigen(system.Positions);
+        Eigen::VectorXf y = calc_y(system, glm2eigen(system.Positions), dt);
+        Eigen::VectorXf x = y;
+        float g = calc_g(system, x, y, dt);
+        int numIter = 5;
+        for(int k = 1; k < numIter; k++) {
+            Eigen::VectorXf delta_g = calc_dg(system, x, y, dt);
+            // delta_g2 = calc_ddg(system, glm2eigen(system.Positions), y, dt);
+            Eigen::VectorXf delta_x = -delta_g;
+            float beta = 0.95, alpha = 1 / beta, g_new = g, gamma = 0.0001;
+            Eigen::VectorXf x_new = x; //, y_new = y;
+            do {
+                alpha *= beta;
+                x_new = x + alpha * delta_x;
+                // y_new = calc_y(system, x_new, dt); 
+                g_new = calc_g(system, x_new, y, dt);
+            } while(g_new > g + alpha * gamma * delta_g.dot(delta_x));
+            x = x_new;
+            g = g_new;
+            // y = y_new;
+        }
+        std::vector<glm::vec3> newV = eigen2glm((x - x_origin) / dt);
+        std::vector<glm::vec3> newX = eigen2glm(x);
+        for(int i = 0; i < system.Positions.size(); i++) {
+            if(system.Fixed[i]) continue;
+            system.Positions[i] = newX[i];
+            system.Velocities[i] = newV[i];
         }
     }
 }
