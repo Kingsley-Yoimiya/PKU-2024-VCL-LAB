@@ -147,9 +147,31 @@ namespace VCX::Labs::Animation {
         return ret;
     }
 
-    // Eigen::VectorXf calc_ddg(MassSpringSystem &system, Eigen::VectorXf const Positions, Eigen::VectorXf const y, float const dt) {
-
-    // }
+    Eigen::SparseMatrix<float> calc_ddg(MassSpringSystem &system, Eigen::VectorXf const Positions, Eigen::VectorXf const y, float const dt) {
+        std::vector<Eigen::Triplet<float>> triplets;
+        for(const auto spring : system.Springs) {
+            auto const p0 = spring.AdjIdx.first;
+            auto const p1 = spring.AdjIdx.second;
+            glm::vec3 const x01 = getVec3(Positions, p1) - getVec3(Positions, p0);
+            glm::vec3 const e01 = glm::normalize(x01);
+            glm::mat3 f(0);
+            for(int i = 0; i < 3; i++) for(int j = 0; j < 3; j++) 
+                f[i][j] += system.Stiffness * (
+                    x01[i] * x01[j] / glm::dot(x01, x01) + 
+                    (1 - spring.RestLength / glm::length(x01)) * ((i == j) - x01[i] * x01[j] / glm::dot(x01, x01))
+                );
+            for(int i = 0; i < 3; i++) for(int j = 0; j < 3; j++) {
+                triplets.emplace_back(p0 * 3 + i, p0 * 3 + j, f[i][j]);
+                triplets.emplace_back(p0 * 3 + i, p1 * 3 + j, -f[i][j]);
+                triplets.emplace_back(p1 * 3 + i, p0 * 3 + j, -f[i][j]);
+                triplets.emplace_back(p1 * 3 + i, p1 * 3 + j, +f[i][j]);
+            }
+        }
+        for(int i = 0; i < Positions.size() * 3; i++) {
+            triplets.emplace_back(i, i, system.Mass / (dt * dt));
+        }
+        return CreateEigenSparseMatrix(Positions.size() * 3, triplets);
+    }
 
     void AdvanceMassSpringSystem(MassSpringSystem & system, float const dt) {
         Eigen::VectorXf x_origin = glm2eigen(system.Positions);
@@ -159,9 +181,9 @@ namespace VCX::Labs::Animation {
         int numIter = 5;
         for(int k = 1; k < numIter; k++) {
             Eigen::VectorXf delta_g = calc_dg(system, x, y, dt);
-            // delta_g2 = calc_ddg(system, glm2eigen(system.Positions), y, dt);
-            Eigen::VectorXf delta_x = -delta_g;
-            float beta = 0.95, alpha = 1 / beta, g_new = g, gamma = 0.0001;
+            Eigen::SparseMatrix delta_g2 = calc_ddg(system, glm2eigen(system.Positions), y, dt);
+            Eigen::VectorXf delta_x = ComputeSimplicialLLT(delta_g2, -delta_g);
+            float beta = 0.8, alpha = 1 / beta, g_new = g, gamma = 0.001;
             Eigen::VectorXf x_new = x; //, y_new = y;
             do {
                 alpha *= beta;
