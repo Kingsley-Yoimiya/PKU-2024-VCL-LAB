@@ -17,6 +17,9 @@ namespace VCX::Labs::Animation {
         
         for (int i = StartIndex; i < ik.JointLocalOffset.size(); i++) {
             // your code here: forward kinematics, update JointGlobalPosition and JointGlobalRotation
+            ik.JointGlobalRotation[i] = ik.JointGlobalRotation[i - 1] * ik.JointLocalRotation[i];
+            auto transRotation = glm::mat4_cast(ik.JointGlobalRotation[i]) * glm::vec4(ik.JointLocalOffset[i], 1.0f);
+            ik.JointGlobalPosition[i] = ik.JointGlobalPosition[i - 1] + glm::vec3(transRotation.x, transRotation.y, transRotation.z) / transRotation.w;
         }
     }
 
