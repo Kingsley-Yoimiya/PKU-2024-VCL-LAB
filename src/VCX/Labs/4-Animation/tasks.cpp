@@ -28,6 +28,14 @@ namespace VCX::Labs::Animation {
         // These functions will be useful: glm::normalize, glm::rotation, glm::quat * glm::quat
         for (int CCDIKIteration = 0; CCDIKIteration < maxCCDIKIteration && glm::l2Norm(ik.EndEffectorPosition() - EndPosition) > eps; CCDIKIteration++) {
             // your code here: ccd ik
+            for (int i = ik.NumJoints() - 2; i >= 0; i--) {
+                ik.JointLocalRotation[i] = 
+                    glm::rotation(
+                        glm::normalize(ik.EndEffectorPosition() - ik.JointGlobalPosition[i]), 
+                        glm::normalize(EndPosition              - ik.JointGlobalPosition[i])
+                    ) * ik.JointLocalRotation[i];                
+                ForwardKinematics(ik, i);
+            }
         }
     }
 
