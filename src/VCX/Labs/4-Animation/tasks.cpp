@@ -81,18 +81,33 @@ namespace VCX::Labs::Animation {
 
     IKSystem::Vec3ArrPtr IKSystem::BuildCustomTargetPosition() {
         // get function from https://www.wolframalpha.com/input/?i=Albert+Einstein+curve
-        int nums = 5000;
+        // int nums = 5000;
+        // using Vec3Arr = std::vector<glm::vec3>;
+        // std::shared_ptr<Vec3Arr> custom(new Vec3Arr(nums));
+        // int index = 0;
+        // for (int i = 0; i < nums; i++) {
+        //     float x_val = 1.5e-3f * custom_x(92 * glm::pi<float>() * i / nums);
+        //     float y_val = 1.5e-3f * custom_y(92 * glm::pi<float>() * i / nums);
+        //     if (std::abs(x_val) < 1e-3 || std::abs(y_val) < 1e-3) continue;
+        //     (*custom)[index++] = glm::vec3(1.6f - x_val, 0.0f, y_val - 0.2f);
+        // }
+        // custom->resize(index);
+        // return custom;
+        std::string C = R"(
+  ...   ...   ...   ..........
+   ... ...    ...   ...    ...
+    ....      ...   ......... 
+     ...      ...   ... ...   
+     ...  ... ...   ...  ...  
+     ...    ....    ...   ... 
+)";
         using Vec3Arr = std::vector<glm::vec3>;
-        std::shared_ptr<Vec3Arr> custom(new Vec3Arr(nums));
-        int index = 0;
-        for (int i = 0; i < nums; i++) {
-            float x_val = 1.5e-3f * custom_x(92 * glm::pi<float>() * i / nums);
-            float y_val = 1.5e-3f * custom_y(92 * glm::pi<float>() * i / nums);
-            if (std::abs(x_val) < 1e-3 || std::abs(y_val) < 1e-3) continue;
-            (*custom)[index++] = glm::vec3(1.6f - x_val, 0.0f, y_val - 0.2f);
-        }
-        custom->resize(index);
-        return custom;
+        Vec3Arr custom;
+        for (int i = 0; i < 6; i++) for(int j = 0; j < 30; j++) if(C[i * 31 + j] == '.')
+            custom.emplace_back(glm::vec3(i / 6.f, 0.f, j / 30.f));
+        std::shared_ptr<Vec3Arr> custom_ptr(new Vec3Arr(custom.size()));
+        std::copy(custom.begin(), custom.end(), custom_ptr->begin());
+        return custom_ptr;
     }
 
     static Eigen::VectorXf glm2eigen(std::vector<glm::vec3> const & glm_v) {
