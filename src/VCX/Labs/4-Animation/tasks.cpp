@@ -51,6 +51,9 @@ namespace VCX::Labs::Animation {
 
             for (int i = nJoints - 2; i >= 0; i--) {
                 // your code here
+                auto r = glm::normalize(ik.JointGlobalPosition[i] - next_position);
+                next_position = next_position + r * ik.JointOffsetLength[i + 1];
+                backward_positions[i] = next_position; 
             }
 
             // forward update
@@ -58,6 +61,9 @@ namespace VCX::Labs::Animation {
             forward_positions[0] = ik.JointGlobalPosition[0];
             for (int i = 0; i < nJoints - 1; i++) {
                 // your code here
+                auto r =  glm::normalize(backward_positions[i + 1] - now_position);
+                now_position = now_position + r * ik.JointOffsetLength[i + 1];
+                forward_positions[i + 1] = now_position;
             }
             ik.JointGlobalPosition = forward_positions; // copy forward positions to joint_positions
         }
