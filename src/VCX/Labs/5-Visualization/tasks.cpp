@@ -58,6 +58,15 @@ namespace VCX::Labs::Visualization {
             return -1;
         }
         bool Update(InteractProxy const & proxy) {
+            if(proxy.IsHovering()) {
+                int tmpAxis = getAxis(proxy.MousePos());
+                if(tmpAxis != -1) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand); // set to resize
+                else {
+                    tmpAxis = getRangeAxis(proxy.MousePos());
+                    if(tmpAxis != -1) ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNS); // set to hand
+                    else ImGui::SetMouseCursor(ImGuiMouseCursor_Arrow); // set to default
+                }
+            } else ImGui::SetMouseCursor(ImGuiMouseCursor_Arrow); // set to default
             bool need_upd = proxy.IsHovering() && (proxy.IsClicking() || proxy.IsDragging());
             if(!need_upd && painted) {
                 return false;
@@ -79,7 +88,7 @@ namespace VCX::Labs::Visualization {
                 } else { // Dragging
                     int tmpAxis = getAxis(proxy.DraggingStartPoint());
                     if(tmpAxis != -1) { // start drag the range box.
-                        float rangeDelta = (proxy.MouseDeltaPos()).y;
+                        float rangeDelta = (proxy.MouseDeltaPos()).y / 2;
                         rangeDelta = std::min(rangeDelta, lowerMargin - range_in_canvas[tmpAxis][1]);
                         rangeDelta = std::max(rangeDelta, upperMargin - range_in_canvas[tmpAxis][0]);
                         range_in_canvas[tmpAxis][0] += rangeDelta;
