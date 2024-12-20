@@ -13,8 +13,8 @@ namespace VCX::Labs::Visualization {
     const glm::vec2 rectSize(delta / 10, lowerMargin - upperMargin);
     const glm::vec4 unselectedColor(0.5, 0.5, 0.5, 0.5);
     const glm::vec4 selectedColor(0.866f, 0.627f, 0.866f, 0.5f);
-    const glm::vec4 lightStartColor(0.275f, 0.51f, 0.705f, 0.6f);
-    const glm::vec4 lightEndColor(0.647f, 0.165f, 0.165f, 0.6f);
+    const glm::vec4 lightStartColor(0.275f, 0.51f, 0.705f, 0.9f);
+    const glm::vec4 lightEndColor(0.647f, 0.165f, 0.165f, 0.9f);
     const glm::vec4 lineColor(0, 0, 0, 1);
     const glm::vec4 notInRangeColor(0.5, 0.5, 0.5, 0.07);
     struct CoordinateStates {
@@ -24,6 +24,50 @@ namespace VCX::Labs::Visualization {
         float range_in_data[7][2];
         int selectedId;
         std::vector <std::array<float, 7>> num_data;
+        std::string getCaption(int id) {
+            switch (id)
+            {
+            case 0:
+                return "cylinders";
+            case 1:
+                return "displacement";
+            case 2:
+                return "weight";
+            case 3:
+                return "horsepower";
+            case 4:
+                return "acceleration";
+            case 5:
+                return "mileage";
+            case 6:
+                return "year";
+            default:
+                return "fucked";
+                break;
+            }
+        }
+        std::string getUnitName(int id) {
+            switch (id)
+            {
+            case 0:
+                return "";
+            case 1:
+                return " sq in";
+            case 2:
+                return " lbs";
+            case 3:
+                return " hp";
+            case 4:
+                return " sec";
+            case 5:
+                return " mpg";
+            case 6:
+                return "";
+            default:
+                return "fucked";
+                break;
+            }
+        }
         CoordinateStates(std::vector<Car> const & data) {
             // your code here
             painted = false;
@@ -84,6 +128,7 @@ namespace VCX::Labs::Visualization {
                     /* reset range */
                     range_in_canvas[tmpAxis][0] = upperMargin;
                     range_in_canvas[tmpAxis][1] = lowerMargin;
+                    selectedId = tmpAxis;
                     return true;
                 } else { // Dragging
                     int tmpAxis = getAxis(proxy.DraggingStartPoint());
@@ -130,7 +175,7 @@ namespace VCX::Labs::Visualization {
                     float centerpos = delta * i + leftMargin;
                     glm::vec2 pos(centerpos + rectSize.x / 2, (v[i] - range_in_data[i][0]) / (range_in_data[i][1] - range_in_data[i][0]) * (lowerMargin - upperMargin) + upperMargin);
                     if(i != 0) {
-                        DrawLine(input, color, lastpos, pos, 0.002);
+                        DrawLine(input, color, lastpos, pos, 0.00002);
                     }
                     lastpos = pos;
                 }
@@ -147,6 +192,11 @@ namespace VCX::Labs::Visualization {
                 }
                 DrawFilledRect(input, color, glm::vec2(centerpos, range_in_canvas[i][0]), glm::vec2(rectSize.x, range_in_canvas[i][1] - range_in_canvas[i][0]));
                 DrawLine(input, lineColor, glm::vec2(centerpos + rectSize.x / 2, upperMargin), glm::vec2(centerpos + rectSize.x / 2, lowerMargin), 0.005);
+                PrintText(input, lineColor, glm::vec2(centerpos, upperMargin / 3), upperMargin / 4, getCaption(i));
+                int st = (range_in_canvas[i][0] - upperMargin) / (lowerMargin - upperMargin) * (range_in_data[i][1] - range_in_data[i][0]) + range_in_data[i][0];
+                int ed = (range_in_canvas[i][1] - upperMargin) / (lowerMargin - upperMargin) * (range_in_data[i][1] - range_in_data[i][0]) + range_in_data[i][0];
+                PrintText(input, lineColor, glm::vec2(centerpos, range_in_canvas[i][0] - upperMargin / 4), upperMargin / 4, std::to_string(st) +getUnitName(i));
+                PrintText(input, lineColor, glm::vec2(centerpos, range_in_canvas[i][1] + upperMargin / 4), upperMargin / 4, std::to_string(ed) +getUnitName(i));
             }
         }
     };
