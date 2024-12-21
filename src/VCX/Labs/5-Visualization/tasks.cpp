@@ -210,7 +210,51 @@ namespace VCX::Labs::Visualization {
         return true;
     }
 
+    const float eps = 1e-7;
+
     void LIC(ImageRGB & output, Common::ImageRGB const & noise, VectorField2D const & field, int const & step) {
         // your code here
+        int m = field.size.first, n = field.size.second;
+        float t = 0;
+        for (int i = 0; i < m; i++) for (int j = 0; j < n; j++) {
+            float y = i, x = j;
+            glm::vec3 forward_sum(0, 0, 0);
+            float forward_total = 0;
+            for (int k = 0; k < step; k++) {
+                float dx = field.At(int(y), int(x)).x, dy = field.At(int(y), int(x)).y;
+                float dt_x = 0, dt_y = 0, dt = 0;
+                if (dy > 0) dt_y = (floor(y) + 1 - y) / dy;
+                else if (dy < 0) dt_y = (y - (ceil(y) - 1)) / (-dy);
+                if (dx > 0) dt_x = (floor(x) + 1 - x) / dx;
+                else if (dx < 0) dt_x = (x - (ceil(x) - 1)) / (-dx);
+                if (abs(dx) < eps && abs(dy) < eps) dt = 0;
+                else dt = std::min(dt_x, dt_y);
+                x = std::min(std::max(x + dx * dt, 0.f), n - 1.f);
+                y = std::min(std::max(y + dy * dt, 0.f), m - 1.f);
+                float weight = pow(cos(t + 0.46 * k), 2);
+                forward_sum += noise.At(int(y), int(x)) * weight;
+                forward_total += weight;
+            }
+            y = i, x = j;
+            glm::vec3 backward_sum(0, 0, 0);
+            float backward_total = 0;
+            for (int k = 1; k < step; k++) {
+                float dx = field.At(int(y), int(x)).x, dy = field.At(int(y), int(x)).y;
+                dy *=- 1, dx *= -1;
+                float dt_x = 0, dt_y = 0, dt = 0;
+                if (dy > 0) dt_y = (floor(y) + 1 - y) / dy;
+                else if (dy < 0) dt_y = (y - (ceil(y) - 1)) / (-dy);
+                if (dx > 0) dt_x = (floor(x) + 1 - x) / dx;
+                else if (dx < 0) dt_x = (x - (ceil(x) - 1)) / (-dx);
+                if (abs(dx) < eps && abs(dy) < eps) dt = 0;
+                else dt = std::min(dt_x, dt_y);
+                x = std::min(std::max(x + dx * dt, 0.f), n - 1.f);
+                y = std::min(std::max(y + dy * dt, 0.f), m - 1.f);
+                float weight = pow(cos(t - 0.46 * k), 2);
+                forward_sum += noise.At(int(y), int(x)) * weight;
+                forward_total += weight;
+            }
+            output.At(i, j) = (forward_sum + backward_sum) / (forward_total + backward_total);
+        }
     }
 }; // namespace VCX::Labs::Visualization
