@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Labs/4-Animation/MassSpringSystem.h"
+#include "Labs/4-Animation/CaseMassSpring.h"
 #include "IKSystem.h"
 
 namespace VCX::Labs::Animation {
@@ -10,5 +11,5 @@ namespace VCX::Labs::Animation {
     void InverseKinematicsFABR(IKSystem & ik, const glm::vec3 & EndPosition, int maxFABRIKIteration, float eps);
     
     // lab4 mass spring system
-    void AdvanceMassSpringSystem(MassSpringSystem &, float const);
+    void AdvanceMassSpringSystem(MassSpringSystem &, float const, CaseMassSpring::AlgorithmType);
 }

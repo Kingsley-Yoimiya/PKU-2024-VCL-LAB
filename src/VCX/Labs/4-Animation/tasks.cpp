@@ -205,7 +205,30 @@ namespace VCX::Labs::Animation {
         return CreateEigenSparseMatrix(Positions.size() * 3, triplets);
     }
 
-    void AdvanceMassSpringSystem(MassSpringSystem & system, float const dt) {
+    void integrateOriginal(MassSpringSystem & system, float const dt) {
+        int const steps = 1000;
+        float const ddt = dt / steps; 
+        for (std::size_t s = 0; s < steps; s++) {
+            std::vector<glm::vec3> forces(system.Positions.size(), glm::vec3(0));
+            for (auto const spring : system.Springs) {
+                auto const p0 = spring.AdjIdx.first;
+                auto const p1 = spring.AdjIdx.second;
+                glm::vec3 const x01 = system.Positions[p1] - system.Positions[p0];
+                glm::vec3 const v01 = system.Velocities[p1] - system.Velocities[p0];
+                glm::vec3 const e01 = glm::normalize(x01);
+                glm::vec3 f = (system.Stiffness * (glm::length(x01) - spring.RestLength) + system.Damping * glm::dot(v01, e01)) * e01;
+                forces[p0] += f;
+                forces[p1] -= f;
+            }
+            for (std::size_t i = 0; i < system.Positions.size(); i++) {
+                if (system.Fixed[i]) continue;
+                system.Velocities[i] += (glm::vec3(0, -system.Gravity, 0) + forces[i] / system.Mass) * ddt;
+                system.Positions[i] += system.Velocities[i] * ddt;
+            }
+        }
+    }
+
+    void integrateNewtonDescent(MassSpringSystem & system, float const dt) {
         Eigen::VectorXf x_origin = glm2eigen(system.Positions);
         Eigen::VectorXf y = calc_y(system, glm2eigen(system.Positions), dt);
         Eigen::VectorXf x = y;
@@ -233,6 +256,24 @@ namespace VCX::Labs::Animation {
             if(system.Fixed[i]) continue;
             system.Positions[i] = newX[i];
             system.Velocities[i] = newV[i];
+        }
+    }
+
+    void integrateGlobal_Local(MassSpringSystem & system, float const dt) {
+
+    } 
+
+    void AdvanceMassSpringSystem(MassSpringSystem & system, float const dt, CaseMassSpring::AlgorithmType _algType) {
+        switch(_algType) {
+            case(CaseMassSpring::AlgorithmType::Original):
+                integrateOriginal(system, dt);
+                break;
+            case(CaseMassSpring::AlgorithmType::NewtonDescent):
+                integrateNewtonDescent(system, dt);
+                break;
+            case(CaseMassSpring::AlgorithmType::Global_Local):
+                integrateGlobal_Local(system, dt);
+                break;
         }
     }
 }

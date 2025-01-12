@@ -20,6 +20,13 @@ namespace VCX::Labs::Animation {
 
     void CaseMassSpring::OnSetupPropsUI() {
         if (ImGui::CollapsingHeader("Algorithm", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::Text("Algorithm Type");
+            ImGui::Bullet();
+            if (ImGui::Selectable("Orinal", _algType == AlgorithmType::Original)) _algType = AlgorithmType::Original;
+            ImGui::Bullet();
+            if (ImGui::Selectable("NewtonDescent", _algType == AlgorithmType::NewtonDescent)) _algType = AlgorithmType::NewtonDescent;
+            ImGui::Bullet();
+            if (ImGui::Selectable("Global-Local", _algType == AlgorithmType::Global_Local)) _algType = AlgorithmType::Global_Local;
             if (ImGui::Button("Reset System")) ResetSystem();
             ImGui::SameLine();
             if (ImGui::Button(_stopped ? "Start Simulation" : "Stop Simulation")) _stopped = ! _stopped;
@@ -40,7 +47,7 @@ namespace VCX::Labs::Animation {
     }
 
     Common::CaseRenderResult CaseMassSpring::OnRender(std::pair<std::uint32_t, std::uint32_t> const desiredSize) {
-        if (! _stopped) AdvanceMassSpringSystem(_massSpringSystem, Engine::GetDeltaTime());
+        if (! _stopped) AdvanceMassSpringSystem(_massSpringSystem, Engine::GetDeltaTime(), _algType);
         
         _particlesItem.UpdateVertexBuffer("position", Engine::make_span_bytes<glm::vec3>(_massSpringSystem.Positions));
         _springsItem.UpdateVertexBuffer("position", Engine::make_span_bytes<glm::vec3>(_massSpringSystem.Positions));

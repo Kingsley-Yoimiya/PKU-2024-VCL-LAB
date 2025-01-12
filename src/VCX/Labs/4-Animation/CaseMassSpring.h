@@ -11,6 +11,12 @@
 namespace VCX::Labs::Animation {
     class CaseMassSpring : public Common::ICase {
     public:
+        enum struct AlgorithmType {
+            Original = 0,
+            NewtonDescent, 
+            Global_Local
+        };
+
         CaseMassSpring();
 
         virtual std::string_view const GetName() override { return "Mass-Spring System"; }
@@ -31,7 +37,8 @@ namespace VCX::Labs::Animation {
         glm::vec3                               _particleColor { 1.f, 0.f, 0.f };
         glm::vec3                               _springColor   { 0.f, 0.f, 1.f };
         bool                                    _stopped       { false };
-
+        AlgorithmType                           _algType;
+        
         MassSpringSystem                        _massSpringSystem;
 
         void ResetSystem();
