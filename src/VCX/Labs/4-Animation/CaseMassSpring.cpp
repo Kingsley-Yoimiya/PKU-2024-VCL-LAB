@@ -87,8 +87,8 @@ namespace VCX::Labs::Animation {
 
     void CaseMassSpring::ResetSystem() {
         _massSpringSystem = { };
-        std::size_t const n = 10;
-        float const delta = 2.f / n;
+        std::size_t const n = 20;
+        float const delta = 2.f / 10;
         auto constexpr GetID = [](std::size_t const i, std::size_t const j) { return i * (n + 1) + j; };
         for (std::size_t i = 0; i <= n; i++) {
             for (std::size_t j = 0; j <= n; j++) {
