@@ -47,7 +47,7 @@ namespace VCX::Labs::Animation {
     }
 
     Common::CaseRenderResult CaseMassSpring::OnRender(std::pair<std::uint32_t, std::uint32_t> const desiredSize) {
-        if (! _stopped) AdvanceMassSpringSystem(_massSpringSystem, Engine::GetDeltaTime(), _algType);
+        if (! _stopped) AdvanceMassSpringSystem(_massSpringSystem, Engine::GetDeltaTime(), _algType, _reseted);
         
         _particlesItem.UpdateVertexBuffer("position", Engine::make_span_bytes<glm::vec3>(_massSpringSystem.Positions));
         _springsItem.UpdateVertexBuffer("position", Engine::make_span_bytes<glm::vec3>(_massSpringSystem.Positions));
@@ -86,6 +86,7 @@ namespace VCX::Labs::Animation {
     }
 
     void CaseMassSpring::ResetSystem() {
+        _reseted = true;
         _massSpringSystem = { };
         std::size_t const n = 20;
         float const delta = 2.f / 10;

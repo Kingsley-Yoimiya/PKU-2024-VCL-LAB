@@ -150,6 +150,12 @@ namespace VCX::Labs::Animation {
         return glm::vec3({ x[pos * 3], x[pos * 3 + 1], x[pos * 3 + 2] });
     }
 
+    void setVec3(Eigen::VectorXf &x, int pos, glm::vec3 ret) {
+        x[pos * 3] = ret[0];
+        x[pos * 3 + 1] = ret[1];
+        x[pos * 3 + 2] = ret[2];
+    }
+
     float calc_g(MassSpringSystem &system, Eigen::VectorXf const Positions, Eigen::VectorXf const y, float const dt) {
         Eigen::VectorXf tmp = Positions - y;
         float ret = tmp.dot(tmp) * system.Mass / (2 * dt * dt);
@@ -228,12 +234,22 @@ namespace VCX::Labs::Animation {
         }
     }
 
+    void UpdateSystem(MassSpringSystem & system, Eigen::VectorXf const & x, Eigen::VectorXf const & x_origin, float const dt) {
+        std::vector<glm::vec3> newV = eigen2glm((x - x_origin) / dt);
+        std::vector<glm::vec3> newX = eigen2glm(x);
+        for(int i = 0; i < system.Positions.size(); i++) {
+            if(system.Fixed[i]) continue;
+            system.Positions[i] = newX[i];
+            system.Velocities[i] = newV[i];
+            // printf("%.3f %.3f %.3f\n", newX[i].x, newX[i].y, newX[i].z);
+        }
+    }
     void integrateNewtonDescent(MassSpringSystem & system, float const dt) {
         Eigen::VectorXf x_origin = glm2eigen(system.Positions);
         Eigen::VectorXf y = calc_y(system, glm2eigen(system.Positions), dt);
         Eigen::VectorXf x = y;
         float g = calc_g(system, x, y, dt);
-        int numIter = 5;
+        int numIter = 10;
         for(int k = 1; k < numIter; k++) {
             Eigen::VectorXf delta_g = calc_dg(system, x, y, dt);
             Eigen::SparseMatrix delta_g2 = calc_ddg(system, glm2eigen(system.Positions), y, dt);
@@ -250,20 +266,139 @@ namespace VCX::Labs::Animation {
             g = g_new;
             // y = y_new;
         }
-        std::vector<glm::vec3> newV = eigen2glm((x - x_origin) / dt);
-        std::vector<glm::vec3> newX = eigen2glm(x);
-        for(int i = 0; i < system.Positions.size(); i++) {
-            if(system.Fixed[i]) continue;
-            system.Positions[i] = newX[i];
-            system.Velocities[i] = newV[i];
+        UpdateSystem(system, x, x_origin, dt);
+    }
+
+    bool seted = false;
+    Eigen::SparseMatrix<float> A;
+    Eigen::SparseMatrix<float> J;
+    Eigen::SimplicialLLT<Eigen::SparseMatrix<float>, Eigen::Upper> prefactored_solver;
+    Eigen::VectorXf m_external_force;
+    Eigen::SparseMatrix<float> m_identity_matrix;
+    Eigen::SparseMatrix<float> m_weighted_laplacian;
+    Eigen::SparseMatrix<float> m_mass_matrix;
+
+    void setWeightedLaplacianMatrix(MassSpringSystem & system) {
+        m_weighted_laplacian.resize(system.Positions.size()*3, system.Positions.size()*3);
+        std::vector<Eigen::Triplet<float>> l_triplets;
+        l_triplets.clear();
+        for (auto it = system.Springs.begin(); it != system.Springs.end(); ++it) {
+            float ks = system.Stiffness;
+            int m_p1 = it->AdjIdx.first, m_p2 = it->AdjIdx.second;
+            l_triplets.emplace_back(3*m_p1+0, 3*m_p1+0, ks);
+            l_triplets.emplace_back(3*m_p1+1, 3*m_p1+1, ks);
+            l_triplets.emplace_back(3*m_p1+2, 3*m_p1+2, ks);
+            // block 1 2
+            l_triplets.emplace_back(3*m_p1+0, 3*m_p2+0, -ks);
+            l_triplets.emplace_back(3*m_p1+1, 3*m_p2+1, -ks);
+            l_triplets.emplace_back(3*m_p1+2, 3*m_p2+2, -ks);
+            // block 2 1
+            l_triplets.emplace_back(3*m_p2+0, 3*m_p1+0, -ks);
+            l_triplets.emplace_back(3*m_p2+1, 3*m_p1+1, -ks);
+            l_triplets.emplace_back(3*m_p2+2, 3*m_p1+2, -ks);
+            // block 2 2
+            l_triplets.emplace_back(3*m_p2+0, 3*m_p2+0, ks);
+            l_triplets.emplace_back(3*m_p2+1, 3*m_p2+1, ks);
+            l_triplets.emplace_back(3*m_p2+2, 3*m_p2+2, ks);
+        }
+        m_weighted_laplacian.setFromTriplets(l_triplets.begin(), l_triplets.end());
+    }
+    void setJMatrix(MassSpringSystem & system, Eigen::SparseMatrix<float> &J) {
+        J.resize(system.Positions.size()*3, system.Springs.size()*3);
+        std::vector<Eigen::Triplet<float>> J_triplets;
+        J_triplets.clear();
+
+        for (unsigned int index = 0; index < system.Springs.size(); ++index)
+        {
+            float ks = system.Stiffness;
+            int m_p1 = system.Springs[index].AdjIdx.first, m_p2 = system.Springs[index].AdjIdx.second;
+            // block 1 1
+            J_triplets.emplace_back(3*m_p1+0, 3*index+0, ks);
+            J_triplets.emplace_back(3*m_p1+1, 3*index+1, ks);
+            J_triplets.emplace_back(3*m_p1+2, 3*index+2, ks);
+            // block 2 2
+            J_triplets.emplace_back(3*m_p2+0, 3*index+0, -ks);
+            J_triplets.emplace_back(3*m_p2+1, 3*index+1, -ks);
+            J_triplets.emplace_back(3*m_p2+2, 3*index+2, -ks);
+        }
+        J.setFromTriplets(J_triplets.begin(), J_triplets.end());
+    }
+    void factorizeDirectSolverLLT(const Eigen::SparseMatrix<float>& A, Eigen::SimplicialLLT<Eigen::SparseMatrix<float>, Eigen::Upper>& lltSolver) {
+        Eigen::SparseMatrix<float> A_prime = A;
+        lltSolver.analyzePattern(A_prime);
+        lltSolver.factorize(A_prime);
+        float Regularization = 0.00001;
+        bool success = true;
+        while (lltSolver.info() != Eigen::Success) {
+            Regularization *= 10;
+            A_prime = A_prime + Regularization*m_identity_matrix;
+            lltSolver.factorize(A_prime);
+            success = false;
+        }
+        if (!success)
+            std::cout << "Warning: " <<  " adding "<< Regularization <<" identites.(llt solver)" << std::endl;
+    }
+    void prefactorize(MassSpringSystem & system, float dt, bool &reseted) {
+        if(reseted || !seted) {
+            m_identity_matrix = Eigen::SparseMatrix<float>(system.Positions.size()*3, system.Positions.size()*3);
+            m_mass_matrix = Eigen::SparseMatrix<float>(system.Positions.size()*3, system.Positions.size()*3);
+            // Set Identity_matrix
+            std::vector<Eigen::Triplet<float>> i_triplets, m_triplets;
+            for(int i = 0; i < system.Positions.size()*3; i++) {
+                i_triplets.emplace_back(i, i, 1);
+                m_triplets.emplace_back(i, i, system.Mass);
+            }
+            m_identity_matrix.setFromTriplets(i_triplets.begin(), i_triplets.end());
+            m_mass_matrix.setFromTriplets(m_triplets.begin(), m_triplets.end());
+            m_external_force.resize(system.Positions.size()*3);
+            m_external_force.setZero();
+            for (unsigned int i = 0; i < system.Positions.size(); ++i) {
+                m_external_force[3*i+1] += -system.Gravity;// * system.Mass;
+            }
+            // printf("set external force\n");
+            setWeightedLaplacianMatrix(system);
+            // printf("set laplacian\n");
+            setJMatrix(system, J);
+            // printf("set J\n");
+            A = m_weighted_laplacian * dt * dt + m_mass_matrix;
+            factorizeDirectSolverLLT(A, prefactored_solver);
+            // reseted = false;
+            // seted = true;
+            // printf("prefactorize\n");
+        }
+    }
+    void evaluateDVector(MassSpringSystem & system, const Eigen::VectorXf& x, Eigen::VectorXf& d) {
+        d.resize(system.Springs.size()*3);
+        d.setZero();
+
+        for (unsigned int index = 0; index < system.Springs.size(); ++index) {
+            auto sp = system.Springs[index];
+            glm::vec3 x_ij = getVec3(x, sp.AdjIdx.first) - getVec3(x, sp.AdjIdx.second);
+            glm::vec3 di = glm::normalize(x_ij) * sp.RestLength;
+            setVec3(d, index, di);
         }
     }
 
-    void integrateGlobal_Local(MassSpringSystem & system, float const dt) {
+    Eigen::VectorXf calculateInertiaY(MassSpringSystem & system, float const dt) {
+        return glm2eigen(system.Positions) + glm2eigen(system.Velocities) * dt;
+    }
 
+    void integrateGlobal_Local(MassSpringSystem & system, float const dt, bool &reseted) {
+        Eigen::VectorXf y = calculateInertiaY(system, dt);
+        Eigen::VectorXf x_origin = glm2eigen(system.Positions);
+        Eigen::VectorXf x_next = y;
+        for (unsigned int iteration_num = 0; iteration_num < 10; ++iteration_num) {
+            prefactorize(system, dt, reseted);
+            // printf("prefactorize done\n");
+            Eigen::VectorXf d;
+            evaluateDVector(system, x_next, d);
+            Eigen::VectorXf b = system.Mass * y + dt*dt*(J*d+m_external_force);
+            x_next = prefactored_solver.solve(b);
+        }
+        UpdateSystem(system, x_next, x_origin, dt);
     } 
 
-    void AdvanceMassSpringSystem(MassSpringSystem & system, float const dt, CaseMassSpring::AlgorithmType _algType) {
+    void AdvanceMassSpringSystem(MassSpringSystem & system, float const dt, CaseMassSpring::AlgorithmType _algType, bool &reseted) {
         switch(_algType) {
             case(CaseMassSpring::AlgorithmType::Original):
                 integrateOriginal(system, dt);
@@ -272,7 +407,7 @@ namespace VCX::Labs::Animation {
                 integrateNewtonDescent(system, dt);
                 break;
             case(CaseMassSpring::AlgorithmType::Global_Local):
-                integrateGlobal_Local(system, dt);
+                integrateGlobal_Local(system, dt, reseted);
                 break;
         }
     }

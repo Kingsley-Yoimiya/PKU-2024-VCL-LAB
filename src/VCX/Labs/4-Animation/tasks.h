@@ -11,5 +11,5 @@ namespace VCX::Labs::Animation {
     void InverseKinematicsFABR(IKSystem & ik, const glm::vec3 & EndPosition, int maxFABRIKIteration, float eps);
     
     // lab4 mass spring system
-    void AdvanceMassSpringSystem(MassSpringSystem &, float const, CaseMassSpring::AlgorithmType);
+    void AdvanceMassSpringSystem(MassSpringSystem &, float const, CaseMassSpring::AlgorithmType, bool &);
 }
