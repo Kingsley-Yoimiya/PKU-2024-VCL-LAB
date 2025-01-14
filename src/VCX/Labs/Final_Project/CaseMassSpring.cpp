@@ -19,10 +19,16 @@ namespace VCX::Labs::Animation {
     }
 
     void CaseMassSpring::OnSetupPropsUI() {
+        if (ImGui::CollapsingHeader("Data")) {
+            ImGui::SliderInt("Length of the data", &_num, 5, 20);
+            // if (ImGui::Button("Reset System")) ResetSystem();
+        }
+
+        ImGui::Spacing();
         if (ImGui::CollapsingHeader("Algorithm", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::Text("Algorithm Type");
             ImGui::Bullet();
-            if (ImGui::Selectable("Orinal", _algType == AlgorithmType::Original)) _algType = AlgorithmType::Original;
+            if (ImGui::Selectable("Orinal[IterNum *= 100]", _algType == AlgorithmType::Original)) _algType = AlgorithmType::Original;
             ImGui::Bullet();
             if (ImGui::Selectable("NewtonDescent", _algType == AlgorithmType::NewtonDescent)) _algType = AlgorithmType::NewtonDescent;
             ImGui::Bullet();
@@ -34,6 +40,7 @@ namespace VCX::Labs::Animation {
             ImGui::SliderFloat("Spr. Stiff.", &_massSpringSystem.Stiffness, 10.f, 300.f);
             ImGui::SliderFloat("Spr. Damp.", &_massSpringSystem.Damping, .1f, 10.f);
             ImGui::SliderFloat("Gravity", &_massSpringSystem.Gravity, .1f, 1.f);
+            ImGui::SliderInt("Iteration Num", &_iteration_num, 1, 30);
         }
         ImGui::Spacing();
 
@@ -47,7 +54,7 @@ namespace VCX::Labs::Animation {
     }
 
     Common::CaseRenderResult CaseMassSpring::OnRender(std::pair<std::uint32_t, std::uint32_t> const desiredSize) {
-        if (! _stopped) AdvanceMassSpringSystem(_massSpringSystem, Engine::GetDeltaTime(), _algType, _reseted);
+        if (! _stopped) AdvanceMassSpringSystem(_massSpringSystem, Engine::GetDeltaTime(), _algType, _iteration_num, _reseted);
         
         _particlesItem.UpdateVertexBuffer("position", Engine::make_span_bytes<glm::vec3>(_massSpringSystem.Positions));
         _springsItem.UpdateVertexBuffer("position", Engine::make_span_bytes<glm::vec3>(_massSpringSystem.Positions));
@@ -88,9 +95,9 @@ namespace VCX::Labs::Animation {
     void CaseMassSpring::ResetSystem() {
         _reseted = true;
         _massSpringSystem = { };
-        std::size_t const n = 20;
+        std::size_t n = _num;
         float const delta = 2.f / 10;
-        auto constexpr GetID = [](std::size_t const i, std::size_t const j) { return i * (n + 1) + j; };
+        auto GetID = [&](std::size_t const i, std::size_t const j) { return i * (n + 1) + j; };
         for (std::size_t i = 0; i <= n; i++) {
             for (std::size_t j = 0; j <= n; j++) {
                 _massSpringSystem.AddParticle(glm::vec3(i * delta , 1.5f, j * delta - 1.f));

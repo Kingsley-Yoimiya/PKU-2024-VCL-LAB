@@ -5,5 +5,5 @@
 
 namespace VCX::Labs::Animation {
     // lab4 mass spring system
-    void AdvanceMassSpringSystem(MassSpringSystem &, float const, CaseMassSpring::AlgorithmType, bool &);
+    void AdvanceMassSpringSystem(MassSpringSystem &, float const, CaseMassSpring::AlgorithmType, int, bool &);
 }

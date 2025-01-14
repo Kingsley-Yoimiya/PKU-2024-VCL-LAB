@@ -107,8 +107,8 @@ namespace VCX::Labs::Animation {
         return CreateEigenSparseMatrix(Positions.size() * 3, triplets);
     }
 
-    void integrateOriginal(MassSpringSystem & system, float const dt) {
-        int const steps = 1000;
+    void integrateOriginal(MassSpringSystem & system, float const dt, int iteration_num) {
+        int steps = iteration_num * 100;
         float const ddt = dt / steps; 
         for (std::size_t s = 0; s < steps; s++) {
             std::vector<glm::vec3> forces(system.Positions.size(), glm::vec3(0));
@@ -140,12 +140,12 @@ namespace VCX::Labs::Animation {
             // printf("%.3f %.3f %.3f\n", newX[i].x, newX[i].y, newX[i].z);
         }
     }
-    void integrateNewtonDescent(MassSpringSystem & system, float const dt) {
+    void integrateNewtonDescent(MassSpringSystem & system, float const dt, int iteration_num) {
         Eigen::VectorXf x_origin = glm2eigen(system.Positions);
         Eigen::VectorXf y = calc_y(system, glm2eigen(system.Positions), dt);
         Eigen::VectorXf x = y;
         float g = calc_g(system, x, y, dt);
-        int numIter = 10;
+        int numIter = iteration_num;
         for(int k = 1; k < numIter; k++) {
             Eigen::VectorXf delta_g = calc_dg(system, x, y, dt);
             Eigen::SparseMatrix delta_g2 = calc_ddg(system, glm2eigen(system.Positions), y, dt);
@@ -279,11 +279,11 @@ namespace VCX::Labs::Animation {
         return glm2eigen(system.Positions) + glm2eigen(system.Velocities) * dt;
     }
 
-    void integrateGlobal_Local(MassSpringSystem & system, float const dt, bool &reseted) {
+    void integrateGlobal_Local(MassSpringSystem & system, float const dt, int iteration_num, bool &reseted) {
         Eigen::VectorXf y = calculateInertiaY(system, dt);
         Eigen::VectorXf x_origin = glm2eigen(system.Positions);
         Eigen::VectorXf x_next = y;
-        for (unsigned int iteration_num = 0; iteration_num < 10; ++iteration_num) {
+        for (unsigned int iter = 0; iter < iteration_num; ++iter) {
             prefactorize(system, dt, reseted);
             // printf("prefactorize done\n");
             Eigen::VectorXf d;
@@ -294,16 +294,16 @@ namespace VCX::Labs::Animation {
         UpdateSystem(system, x_next, x_origin, dt);
     } 
 
-    void AdvanceMassSpringSystem(MassSpringSystem & system, float const dt, CaseMassSpring::AlgorithmType _algType, bool &reseted) {
+    void AdvanceMassSpringSystem(MassSpringSystem & system, float const dt, CaseMassSpring::AlgorithmType _algType, int iteration_num, bool &reseted) {
         switch(_algType) {
             case(CaseMassSpring::AlgorithmType::Original):
-                integrateOriginal(system, dt);
+                integrateOriginal(system, dt, iteration_num);
                 break;
             case(CaseMassSpring::AlgorithmType::NewtonDescent):
-                integrateNewtonDescent(system, dt);
+                integrateNewtonDescent(system, dt, iteration_num);
                 break;
             case(CaseMassSpring::AlgorithmType::Global_Local):
-                integrateGlobal_Local(system, dt, reseted);
+                integrateGlobal_Local(system, dt, iteration_num, reseted);
                 break;
         }
     }

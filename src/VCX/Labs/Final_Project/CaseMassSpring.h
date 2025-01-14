@@ -38,7 +38,9 @@ namespace VCX::Labs::Animation {
         glm::vec3                               _springColor   { 0.f, 0.f, 1.f };
         bool                                    _stopped       { false };
         bool                                    _reseted       { true };
-        AlgorithmType                           _algType;
+        int                                     _iteration_num { 10 };
+        int                                     _num           { 10 };
+        AlgorithmType                           _algType       {AlgorithmType::Original};
 
         MassSpringSystem                        _massSpringSystem;
 
