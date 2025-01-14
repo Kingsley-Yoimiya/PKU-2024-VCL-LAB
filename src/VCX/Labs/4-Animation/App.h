@@ -4,7 +4,6 @@
 
 #include "Engine/app.h"
 #include "Labs/4-Animation/CaseMassSpring.h"
-#include "Labs/4-Animation/CaseInverseKinematics.h"
 #include "Labs/Common/UI.h"
 
 namespace VCX::Labs::Animation {
@@ -14,7 +13,6 @@ namespace VCX::Labs::Animation {
         Common::UI             _ui;
 
         CaseMassSpring         _caseMassSpring;
-        CaseInverseKinematics  _caseInverseKinematics;
 
         std::size_t        _caseId = 0;
 
