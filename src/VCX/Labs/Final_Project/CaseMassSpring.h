@@ -3,7 +3,7 @@
 #include "Engine/GL/Frame.hpp"
 #include "Engine/GL/Program.h"
 #include "Engine/GL/RenderItem.h"
-#include "Labs/4-Animation/MassSpringSystem.h"
+#include "Labs/Final_Project/MassSpringSystem.h"
 #include "Labs/Common/OrbitCameraManager.h"
 #include "Labs/Common/ICase.h"
 #include "Labs/Common/ImageRGB.h"

@@ -1,4 +1,4 @@
-#include "Labs/4-Animation/App.h"
+#include "Labs/Final_Project/App.h"
 
 namespace VCX::Labs::Animation {
     App::App() : _ui(Labs::Common::UIOptions { }) {

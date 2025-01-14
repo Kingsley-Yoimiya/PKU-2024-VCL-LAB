@@ -3,7 +3,7 @@
 #include <vector>
 
 #include "Engine/app.h"
-#include "Labs/4-Animation/CaseMassSpring.h"
+#include "Labs/Final_Project/CaseMassSpring.h"
 #include "Labs/Common/UI.h"
 
 namespace VCX::Labs::Animation {

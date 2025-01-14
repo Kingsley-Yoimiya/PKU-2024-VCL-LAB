@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Labs/4-Animation/MassSpringSystem.h"
-#include "Labs/4-Animation/CaseMassSpring.h"
+#include "Labs/Final_Project/MassSpringSystem.h"
+#include "Labs/Final_Project/CaseMassSpring.h"
 
 namespace VCX::Labs::Animation {
     // lab4 mass spring system

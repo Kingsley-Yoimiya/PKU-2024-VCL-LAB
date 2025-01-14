@@ -1,6 +1,6 @@
 #include "Engine/app.h"
-#include "Labs/4-Animation/CaseMassSpring.h"
-#include "Labs/4-Animation/tasks.h"
+#include "Labs/Final_Project/CaseMassSpring.h"
+#include "Labs/Final_Project/tasks.h"
 #include "Labs/Common/ImGuiHelper.h"
 
 namespace VCX::Labs::Animation {
