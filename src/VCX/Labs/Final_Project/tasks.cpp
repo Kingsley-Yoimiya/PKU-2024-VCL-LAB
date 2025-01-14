@@ -258,7 +258,7 @@ namespace VCX::Labs::Animation {
             // printf("set J\n");
             A = m_weighted_laplacian * dt * dt + m_mass_matrix;
             factorizeDirectSolverLLT(A, prefactored_solver);
-            // reseted = false;
+            reseted = false;
             // seted = true;
             // printf("prefactorize\n");
         }
@@ -291,6 +291,7 @@ namespace VCX::Labs::Animation {
             Eigen::VectorXf b = system.Mass * y + dt*dt*(J*d+m_external_force);
             x_next = prefactored_solver.solve(b);
         }
+        reseted = true;
         UpdateSystem(system, x_next, x_origin, dt);
     } 
 
@@ -306,5 +307,6 @@ namespace VCX::Labs::Animation {
                 integrateGlobal_Local(system, dt, iteration_num, reseted);
                 break;
         }
+        seted = true;
     }
 }

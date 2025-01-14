@@ -19,8 +19,8 @@ namespace VCX::Labs::Animation {
     }
 
     void CaseMassSpring::OnSetupPropsUI() {
-        if (ImGui::CollapsingHeader("Data")) {
-            ImGui::SliderInt("Length of the data", &_num, 5, 20);
+        if (ImGui::CollapsingHeader("Data", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::SliderInt("Length of the data", &_num, 5, 30);
             // if (ImGui::Button("Reset System")) ResetSystem();
         }
 
